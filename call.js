@@ -12,29 +12,52 @@ const CALL_NUMBER = process.env.CALL_NUMBER || '01319779498';
 const TALK_SECONDS = parseInt(process.env.TALK_SECONDS || '65', 10);
 const PAGE_URL = process.env.PAGE_URL || 'https://sip.shanto.info/';
 
+const t0 = Date.now();
+const elapsed = () => ((Date.now() - t0) / 1000).toFixed(0) + 's';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+let page = null;
+
+async function dumpPageState(tag) {
+  if (!page) return;
+  try {
+    console.log(`--- page state (${tag}) ---`);
+    console.log('status:', (await page.textContent('#status', { timeout: 5000 }).catch(() => '(n/a)')) || '(empty)');
+    console.log('promo:', (await page.textContent('#promoStatus', { timeout: 5000 }).catch(() => '(n/a)')) || '(empty)');
+    const log = (await page.textContent('#log', { timeout: 5000 }).catch(() => '')) || '';
+    console.log('log (last 3000 chars):\n' + log.slice(-3000));
+  } catch (e) { console.log('dump failed:', String(e).slice(0, 200)); }
+  try {
+    await page.screenshot({ path: 'failure.png' });
+    console.log('saved screenshot failure.png');
+  } catch (e) { console.log('screenshot failed:', String(e).slice(0, 200)); }
+}
 
 (async () => {
   if (!SIP_USER || !SIP_PASS) {
     console.error('MISSING SECRETS: set SIP_USER and SIP_PASS (GitHub Secrets).');
     process.exit(2);
   }
-  const browser = await chromium.launch({
-    headless: true,
-    args: [
-      '--no-sandbox',
-      '--disable-dev-shm-usage',
-      '--autoplay-policy=no-user-gesture-required',
-      '--use-fake-ui-for-media-stream',
-      '--use-fake-device-for-media-stream',
-    ],
-  });
-  const page = await browser.newPage();
-  page.on('pageerror', (e) => console.log('[pageerror]', String(e).slice(0, 300)));
+  let browser = null;
   try {
-    console.log('Opening', PAGE_URL);
+    browser = await chromium.launch({
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-dev-shm-usage',
+        '--autoplay-policy=no-user-gesture-required',
+        '--use-fake-ui-for-media-stream',
+        '--use-fake-device-for-media-stream',
+      ],
+    });
+    page = await browser.newPage();
+    page.on('console', (m) => console.log(`[page console ${elapsed()}]`, m.type(), m.text().slice(0, 300)));
+    page.on('pageerror', (e) => console.log(`[pageerror ${elapsed()}]`, String(e).slice(0, 300)));
+
+    console.log(`[${elapsed()}] Opening`, PAGE_URL);
     await page.goto(PAGE_URL, { waitUntil: 'load', timeout: 60000 });
     await page.waitForSelector('#registerBtn', { timeout: 30000 });
+    console.log(`[${elapsed()}] Page loaded, form found`);
 
     // Fill the connection form from secrets/env.
     await page.fill('#server', SIP_SERVER);
@@ -43,22 +66,22 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await page.fill('#password', SIP_PASS);
     await page.fill('#number', CALL_NUMBER);
 
-    console.log('Registering as', SIP_USER);
+    console.log(`[${elapsed()}] Registering as`, SIP_USER);
     await page.click('#registerBtn');
     try {
       await page.waitForFunction(
         () => document.querySelector('#status')?.textContent?.includes('Registered'),
         { timeout: 60000 }
       );
-      console.log('REGISTERED');
+      console.log(`[${elapsed()}] REGISTERED`);
     } catch {
-      console.error('REGISTER FAILED — status:', await page.textContent('#status'));
-      console.log('--- page log ---\n' + (await page.textContent('#log')));
+      console.error(`[${elapsed()}] REGISTER FAILED — status:`, await page.textContent('#status'));
+      await dumpPageState('register-failed');
       process.exitCode = 1;
       return;
     }
 
-    console.log('Calling', CALL_NUMBER);
+    console.log(`[${elapsed()}] Calling`, CALL_NUMBER);
     await page.click('#callBtn');
 
     // Wait for answer (up to 75s of ringing), then let the promo play.
@@ -70,12 +93,12 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
       await sleep(1000);
     }
     if (!answered) {
-      console.error('NO ANSWER (or call ended while ringing).');
-      console.log('--- page log ---\n' + (await page.textContent('#log')));
+      console.error(`[${elapsed()}] NO ANSWER (or call ended while ringing).`);
+      await dumpPageState('no-answer');
       process.exitCode = 1;
       return;
     }
-    console.log('ANSWERED — letting the promo play for', TALK_SECONDS, 's');
+    console.log(`[${elapsed()}] ANSWERED — letting the promo play for`, TALK_SECONDS, 's');
     await sleep(TALK_SECONDS * 1000);
 
     const hangupEnabled = await page.isEnabled('#hangupBtn').catch(() => false);
@@ -98,12 +121,14 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
       process.exitCode = 0;
     } else {
       console.error('VOICE NOT CONFIRMED: no outbound audio packets — the callee heard nothing.');
+      await dumpPageState('voice-not-confirmed');
       process.exitCode = 1;
     }
+  } catch (e) {
+    console.error(`[${elapsed()}] SCRIPT ERROR:`, e);
+    await dumpPageState('script-error');
+    process.exitCode = 1;
   } finally {
-    await browser.close().catch(() => {});
+    if (browser) await browser.close().catch(() => {});
   }
-})().catch((e) => {
-  console.error('SCRIPT ERROR:', e);
-  process.exit(1);
-});
+})();

@@ -35,3 +35,10 @@ jobs:
           CALL_NUMBER: ${{ github.event.inputs.number || '01319779498' }}
           TALK_SECONDS: ${{ github.event.inputs.talk_seconds || '65' }}
         run: node call.js
+      - name: Upload failure screenshot
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failure-screenshot
+          path: failure.png
+          if-no-files-found: ignore
