@@ -16,6 +16,7 @@ GitHub ফ্রি অ্যাকাউন্টে মাসে **২,০০�
    Public বা Private যেকোনোটা চলবে।
 3. এই ফোল্ডারের **সব ফাইল** রিপোজিটরিতে আপলোড করুন
    (Add file → Upload files) — `.github` ফোল্ডারটাসহ।
+   `package-lock.json` ফাইলটাও অবশ্যই থাকতে হবে।
    সব ফাইল না থাকলে কাজ করবে না।
 4. **Settings → Secrets and variables → Actions → New repository secret**
    - নাম: `SIP_USER`, ভ্যালু: `09649360000`
