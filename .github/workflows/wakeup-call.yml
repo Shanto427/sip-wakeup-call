@@ -1,0 +1,37 @@
+name: Wake-up / promo call
+
+# Free GitHub Actions runner places the SIP call every morning at 06:00 Dhaka
+# (00:00 UTC) and can also be run manually for a promo call to any number.
+# Free tier: 2,000 minutes/month. One daily ~3 min run = ~90 min/month.
+on:
+  schedule:
+    - cron: '0 0 * * *' # 00:00 UTC = 06:00 Asia/Dhaka
+  workflow_dispatch:
+    inputs:
+      number:
+        description: 'Phone number to call (e.g. 01319779498)'
+        required: false
+        default: '01319779498'
+      talk_seconds:
+        description: 'Seconds to stay on the call after answer'
+        required: false
+        default: '65'
+
+jobs:
+  call:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Place the call
+        env:
+          SIP_USER: ${{ secrets.SIP_USER }}
+          SIP_PASS: ${{ secrets.SIP_PASS }}
+          CALL_NUMBER: ${{ github.event.inputs.number || '01319779498' }}
+          TALK_SECONDS: ${{ github.event.inputs.talk_seconds || '65' }}
+        run: node call.js

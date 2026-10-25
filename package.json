@@ -1,0 +1,1 @@
+{"dependencies":{"playwright":"^1.49.0"},"description":"Free scheduled SIP wake-up / promo call via GitHub Actions + Playwright","name":"sip-wakeup-call","private":true,"scripts":{"call":"node call.js"},"version":"1.0.0"}
