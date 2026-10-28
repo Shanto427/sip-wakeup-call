@@ -1,8 +1,8 @@
 name: Wake-up / promo call
 
 # Free GitHub Actions runner places the SIP call every morning at 06:00 Dhaka
-# (00:00 UTC) and can also be run manually for a promo call to any number.
-# Free tier: 2,000 minutes/month. One daily ~3 min run = ~90 min/month.
+# (00:00 UTC) and can also be run manually for a wake-up call to any number.
+# Free tier: 2,000 minutes/month. One daily ~4 min run = ~120 min/month.
 on:
   schedule:
     - cron: '0 0 * * *' # 00:00 UTC = 06:00 Asia/Dhaka
@@ -15,7 +15,7 @@ on:
       talk_seconds:
         description: 'Seconds to stay on the call after answer'
         required: false
-        default: '65'
+        default: '120'
 
 jobs:
   call:
@@ -33,7 +33,7 @@ jobs:
           SIP_USER: ${{ secrets.SIP_USER }}
           SIP_PASS: ${{ secrets.SIP_PASS }}
           CALL_NUMBER: ${{ github.event.inputs.number || '01319779498' }}
-          TALK_SECONDS: ${{ github.event.inputs.talk_seconds || '65' }}
+          TALK_SECONDS: ${{ github.event.inputs.talk_seconds || '120' }}
         run: node call.js
       - name: Upload failure screenshot
         if: failure()
