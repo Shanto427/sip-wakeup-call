@@ -1,5 +1,5 @@
 // Pixel Web — free scheduled SIP wake-up / promo call (GitHub Actions + Playwright).
-// Opens https://sip.shanto.info/, registers the SIP account, calls the number,
+// Opens https://call.shanto.info/, registers the SIP account, calls the number,
 // waits, and reports whether the promo voice actually travelled (outbound packets).
 // Credentials come ONLY from environment variables (GitHub Secrets) — never hardcode.
 const { chromium } = require('playwright');
@@ -10,7 +10,7 @@ const SIP_SERVER = process.env.SIP_SERVER || '103.170.231.10';
 const SIP_PORT = process.env.SIP_PORT || '5060';
 const CALL_NUMBER = process.env.CALL_NUMBER || '01319779498';
 const TALK_SECONDS = parseInt(process.env.TALK_SECONDS || '65', 10);
-const PAGE_URL = process.env.PAGE_URL || 'https://sip.shanto.info/';
+const PAGE_URL = process.env.PAGE_URL || 'https://call.shanto.info/';
 
 const t0 = Date.now();
 const elapsed = () => ((Date.now() - t0) / 1000).toFixed(0) + 's';
